@@ -1,4 +1,20 @@
-import { products } from "./data/products";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
+
+type ProductRecord = {
+  id: string;
+  title: string;
+  description?: string;
+  price?: number;
+};
+
+type StockRecord = {
+  product_id: string;
+  count?: number;
+};
+
+const ddbClient = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(ddbClient);
 
 type Event = {
   pathParameters?: {
@@ -14,6 +30,8 @@ export const handler = async (
   body: string;
 }> => {
   const productId = event.pathParameters?.productId;
+  const productsTableName = process.env.PRODUCTS_TABLE_NAME;
+  const stockTableName = process.env.STOCK_TABLE_NAME;
 
   if (!productId) {
     return {
@@ -28,7 +46,38 @@ export const handler = async (
     };
   }
 
-  const product = products.find((item) => item.id === productId);
+  if (!productsTableName || !stockTableName) {
+    return {
+      statusCode: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Methods": "GET,OPTIONS",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: "DynamoDB table environment variables are not configured",
+      }),
+    };
+  }
+
+  const [productResult, stockResult] = await Promise.all([
+    docClient.send(
+      new GetCommand({
+        TableName: productsTableName,
+        Key: { id: productId },
+      }),
+    ),
+    docClient.send(
+      new GetCommand({
+        TableName: stockTableName,
+        Key: { product_id: productId },
+      }),
+    ),
+  ]);
+
+  const product = productResult.Item as ProductRecord | undefined;
+  const stock = stockResult.Item as StockRecord | undefined;
 
   if (!product) {
     return {
@@ -45,6 +94,14 @@ export const handler = async (
     };
   }
 
+  const productWithCount = {
+    id: product.id,
+    title: product.title,
+    description: product.description ?? "",
+    price: product.price ?? 0,
+    count: stock?.count ?? 0,
+  };
+
   return {
     statusCode: 200,
     headers: {
@@ -53,6 +110,6 @@ export const handler = async (
       "Access-Control-Allow-Methods": "GET,OPTIONS",
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(product),
+    body: JSON.stringify(productWithCount),
   };
 };

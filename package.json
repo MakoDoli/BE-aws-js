@@ -8,6 +8,7 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
+    "seed": "ts-node scripts/seedTables.ts",
     "cdk": "cdk"
   },
   "devDependencies": {
@@ -21,6 +22,8 @@
     "typescript": "~5.9.3"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.908.0",
+    "@aws-sdk/lib-dynamodb": "^3.908.0",
     "aws-cdk-lib": "^2.247.0",
     "constructs": "^10.5.0"
   }
