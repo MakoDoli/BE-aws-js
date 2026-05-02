@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib";
 import { BeAwsJsStack } from "../lib/be-aws-js-stack";
+import { ImportServiceStack } from "../lib/import-service-stack";
 
 const app = new cdk.App();
 new BeAwsJsStack(app, "BeAwsJsStack", {
@@ -14,4 +15,8 @@ new BeAwsJsStack(app, "BeAwsJsStack", {
    * want to deploy the stack to. */
   // env: { account: '123456789012', region: 'us-east-1' },
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+});
+
+new ImportServiceStack(app, "ImportServiceStack", {
+  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
 });
