@@ -1,0 +1,15 @@
+{
+  "BeAwsJsStack": {
+    "CatalogItemsQueueUrl": "https://sqs.us-east-1.amazonaws.com/650810417883/catalogItemsQueue",
+    "CreateProductTopicArn": "arn:aws:sns:us-east-1:650810417883:createProductTopic",
+    "ExportsOutputRefCatalogItemsQueueB3B6CE2371CAE407": "https://sqs.us-east-1.amazonaws.com/650810417883/catalogItemsQueue",
+    "ExportsOutputFnGetAttCatalogItemsQueueB3B6CE23Arn84BD9E22": "arn:aws:sqs:us-east-1:650810417883:catalogItemsQueue",
+    "ProductsApiEndpointD9B1D2AF": "https://9puteojvkb.execute-api.us-east-1.amazonaws.com/prod/",
+    "ProductsApiUrl": "https://9puteojvkb.execute-api.us-east-1.amazonaws.com/prod/"
+  },
+  "ImportServiceStack": {
+    "ImportApiEndpointD68DD113": "https://wtzerlzpal.execute-api.us-east-1.amazonaws.com/prod/",
+    "ImportBucketName": "importservicestack-importproductsbucketacbc52e2-ddslifpw0gbr",
+    "ImportApiUrl": "https://wtzerlzpal.execute-api.us-east-1.amazonaws.com/prod/"
+  }
+}
