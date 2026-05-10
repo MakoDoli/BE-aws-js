@@ -33,6 +33,19 @@ Current deployed URL:
 https://9puteojvkb.execute-api.us-east-1.amazonaws.com/prod/
 ```
 
+## Quick API Links
+
+- Product Service base URL:
+  - https://9puteojvkb.execute-api.us-east-1.amazonaws.com/prod/
+- Import Service base URL:
+  - https://wtzerlzpal.execute-api.us-east-1.amazonaws.com/prod/
+- Product Service API (list products):
+  - https://9puteojvkb.execute-api.us-east-1.amazonaws.com/prod/products
+- Import Service API (generate signed URL):
+  - https://wtzerlzpal.execute-api.us-east-1.amazonaws.com/prod/import?name=products.csv
+- Catalog Items Queue URL:
+  - https://sqs.us-east-1.amazonaws.com/650810417883/catalogItemsQueue
+
 Deploy the stack:
 
 ```bash

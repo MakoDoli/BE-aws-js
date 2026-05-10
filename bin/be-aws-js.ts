@@ -4,7 +4,7 @@ import { BeAwsJsStack } from "../lib/be-aws-js-stack";
 import { ImportServiceStack } from "../lib/import-service-stack";
 
 const app = new cdk.App();
-new BeAwsJsStack(app, "BeAwsJsStack", {
+const productStack = new BeAwsJsStack(app, "BeAwsJsStack", {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
    * but a single synthesized template can be deployed anywhere. */
@@ -19,4 +19,5 @@ new BeAwsJsStack(app, "BeAwsJsStack", {
 
 new ImportServiceStack(app, "ImportServiceStack", {
   // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+  catalogItemsQueue: productStack.catalogItemsQueue,
 });

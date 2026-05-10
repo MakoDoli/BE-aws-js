@@ -1,5 +1,6 @@
 import { Readable } from "stream";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import csvParser from "csv-parser";
 
 type S3Record = {
@@ -14,9 +15,17 @@ type S3Event = {
 };
 
 const s3Client = new S3Client({});
+const sqsClient = new SQSClient({});
 
 export const handler = async (event: S3Event): Promise<void> => {
   const records = event.Records ?? [];
+  const queueUrl = process.env.CATALOG_ITEMS_QUEUE_URL;
+
+  if (!queueUrl) {
+    throw new Error(
+      "CATALOG_ITEMS_QUEUE_URL environment variable is not configured",
+    );
+  }
 
   for (const record of records) {
     const bucketName = record.s3.bucket.name;
@@ -37,17 +46,13 @@ export const handler = async (event: S3Event): Promise<void> => {
       throw new Error("S3 object body is not a readable stream");
     }
 
-    await new Promise<void>((resolve, reject) => {
-      bodyStream
-        .pipe(csvParser())
-        .on("data", (data) => {
-          console.log("Parsed CSV record:", data);
-        })
-        .on("end", () => {
-          console.log(`Finished parsing file: ${objectKey}`);
-          resolve();
-        })
-        .on("error", reject);
-    });
+    for await (const data of bodyStream.pipe(csvParser())) {
+      await sqsClient.send(
+        new SendMessageCommand({
+          QueueUrl: queueUrl,
+          MessageBody: JSON.stringify(data),
+        }),
+      );
+    }
   }
 };

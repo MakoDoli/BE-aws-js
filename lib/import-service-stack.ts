@@ -11,11 +11,16 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { EventType } from "aws-cdk-lib/aws-s3";
 import { BlockPublicAccess, Bucket } from "aws-cdk-lib/aws-s3";
 import { LambdaDestination } from "aws-cdk-lib/aws-s3-notifications";
+import { IQueue } from "aws-cdk-lib/aws-sqs";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import { Construct } from "constructs";
 
+type ImportServiceStackProps = StackProps & {
+  catalogItemsQueue: IQueue;
+};
+
 export class ImportServiceStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: ImportServiceStackProps) {
     super(scope, id, props);
 
     const importBucket = new Bucket(this, "ImportProductsBucket", {
@@ -55,12 +60,14 @@ export class ImportServiceStack extends Stack {
         timeout: Duration.seconds(30),
         environment: {
           IMPORT_BUCKET_NAME: importBucket.bucketName,
+          CATALOG_ITEMS_QUEUE_URL: props.catalogItemsQueue.queueUrl,
         },
       },
     );
 
     importBucket.grantReadWrite(importProductsFile);
     importBucket.grantRead(importFileParser);
+    props.catalogItemsQueue.grantSendMessages(importFileParser);
 
     importBucket.addEventNotification(
       EventType.OBJECT_CREATED,
