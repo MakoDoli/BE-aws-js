@@ -16,9 +16,20 @@ type SqsEvent = {
 
 type IncomingProduct = {
   title?: unknown;
+  name?: unknown;
   description?: unknown;
+  desc?: unknown;
   price?: unknown;
+  cost?: unknown;
   count?: unknown;
+  quantity?: unknown;
+};
+
+type NormalizedIncomingProduct = {
+  title: string;
+  description?: string;
+  price: number;
+  count?: number;
 };
 
 type CreatedProduct = {
@@ -33,24 +44,59 @@ const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 const snsClient = new SNSClient({});
 
-const isValidPayload = (
+const parseInteger = (value: unknown): number | undefined => {
+  if (typeof value === "number" && Number.isInteger(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value.trim());
+    if (Number.isInteger(parsed)) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+};
+
+const normalizePayload = (
   payload: IncomingProduct,
-): payload is {
-  title: string;
-  description?: string;
-  price: number;
-  count?: number;
-} => {
-  return (
-    typeof payload.title === "string" &&
-    payload.title.trim().length > 0 &&
-    typeof payload.price === "number" &&
-    Number.isInteger(payload.price) &&
-    (payload.description === undefined ||
-      typeof payload.description === "string") &&
-    (payload.count === undefined ||
-      (typeof payload.count === "number" && Number.isInteger(payload.count)))
-  );
+): NormalizedIncomingProduct | undefined => {
+  const titleSource = payload.title ?? payload.name;
+  const descriptionSource = payload.description ?? payload.desc;
+  const priceSource = payload.price ?? payload.cost;
+  const countSource = payload.count ?? payload.quantity;
+
+  if (typeof titleSource !== "string" || titleSource.trim().length === 0) {
+    return undefined;
+  }
+
+  if (
+    descriptionSource !== undefined &&
+    typeof descriptionSource !== "string"
+  ) {
+    return undefined;
+  }
+
+  const parsedPrice = parseInteger(priceSource);
+  if (parsedPrice === undefined) {
+    return undefined;
+  }
+
+  let parsedCount: number | undefined;
+  if (countSource !== undefined && countSource !== "") {
+    parsedCount = parseInteger(countSource);
+    if (parsedCount === undefined) {
+      return undefined;
+    }
+  }
+
+  return {
+    title: titleSource.trim(),
+    description: descriptionSource,
+    price: parsedPrice,
+    count: parsedCount,
+  };
 };
 
 export const handler = async (event: SqsEvent): Promise<void> => {
@@ -66,6 +112,7 @@ export const handler = async (event: SqsEvent): Promise<void> => {
 
   const records = event.Records ?? [];
   const createdProducts: CreatedProduct[] = [];
+  let invalidRowsCount = 0;
 
   for (const record of records) {
     let parsedBody: IncomingProduct;
@@ -73,22 +120,31 @@ export const handler = async (event: SqsEvent): Promise<void> => {
     try {
       parsedBody = JSON.parse(record.body) as IncomingProduct;
     } catch {
+      invalidRowsCount += 1;
+      console.warn("Skipped SQS record with invalid JSON body");
       continue;
     }
 
-    if (!isValidPayload(parsedBody)) {
+    const normalized = normalizePayload(parsedBody);
+
+    if (!normalized) {
+      invalidRowsCount += 1;
+      console.warn(
+        "Skipped SQS record due to invalid product payload",
+        parsedBody,
+      );
       continue;
     }
 
     const productId = randomUUID();
     const product = {
       id: productId,
-      title: parsedBody.title.trim(),
-      description: parsedBody.description ?? "",
-      price: parsedBody.price,
+      title: normalized.title,
+      description: normalized.description ?? "",
+      price: normalized.price,
     };
 
-    const count = parsedBody.count ?? 0;
+    const count = normalized.count ?? 0;
 
     await docClient.send(
       new TransactWriteCommand({
@@ -117,6 +173,10 @@ export const handler = async (event: SqsEvent): Promise<void> => {
       count,
     });
   }
+
+  console.log(
+    `Catalog batch finished: created=${createdProducts.length}, skipped=${invalidRowsCount}, received=${records.length}`,
+  );
 
   if (createdProducts.length > 0 && createProductTopicArn) {
     await snsClient.send(
