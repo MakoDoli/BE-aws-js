@@ -1,9 +1,12 @@
 #!/usr/bin/env node
+import "dotenv/config";
 import * as cdk from "aws-cdk-lib";
 import { BeAwsJsStack } from "../lib/be-aws-js-stack";
+import { AuthorizationServiceStack } from "../lib/authorization-service-stack";
+import { ImportServiceStack } from "../lib/import-service-stack";
 
 const app = new cdk.App();
-new BeAwsJsStack(app, "BeAwsJsStack", {
+const productStack = new BeAwsJsStack(app, "BeAwsJsStack", {
   /* If you don't specify 'env', this stack will be environment-agnostic.
    * Account/Region-dependent features and context lookups will not work,
    * but a single synthesized template can be deployed anywhere. */
@@ -14,4 +17,18 @@ new BeAwsJsStack(app, "BeAwsJsStack", {
    * want to deploy the stack to. */
   // env: { account: '123456789012', region: 'us-east-1' },
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+});
+
+const authorizationServiceStack = new AuthorizationServiceStack(
+  app,
+  "AuthorizationServiceStack",
+  {
+    // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+  },
+);
+
+new ImportServiceStack(app, "ImportServiceStack", {
+  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+  catalogItemsQueue: productStack.catalogItemsQueue,
+  basicAuthorizerLambdaArn: authorizationServiceStack.basicAuthorizerLambdaArn,
 });
