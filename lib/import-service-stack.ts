@@ -5,8 +5,13 @@ import {
   Stack,
   StackProps,
 } from "aws-cdk-lib";
-import { LambdaIntegration, RestApi } from "aws-cdk-lib/aws-apigateway";
-import { Runtime } from "aws-cdk-lib/aws-lambda";
+import {
+  AuthorizationType,
+  LambdaIntegration,
+  RestApi,
+  TokenAuthorizer,
+} from "aws-cdk-lib/aws-apigateway";
+import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { EventType } from "aws-cdk-lib/aws-s3";
 import { BlockPublicAccess, Bucket } from "aws-cdk-lib/aws-s3";
@@ -17,6 +22,7 @@ import { Construct } from "constructs";
 
 type ImportServiceStackProps = StackProps & {
   catalogItemsQueue: IQueue;
+  basicAuthorizerLambdaArn: string;
 };
 
 export class ImportServiceStack extends Stack {
@@ -86,8 +92,22 @@ export class ImportServiceStack extends Stack {
       },
     });
 
+    const basicAuthorizerLambda = Function.fromFunctionArn(
+      this,
+      "BasicAuthorizerImported",
+      props.basicAuthorizerLambdaArn,
+    );
+
+    const authorizer = new TokenAuthorizer(this, "ImportApiTokenAuthorizer", {
+      handler: basicAuthorizerLambda,
+      identitySource: "method.request.header.Authorization",
+    });
+
     const importResource = api.root.addResource("import");
-    importResource.addMethod("GET", new LambdaIntegration(importProductsFile));
+    importResource.addMethod("GET", new LambdaIntegration(importProductsFile), {
+      authorizationType: AuthorizationType.CUSTOM,
+      authorizer,
+    });
 
     new CfnOutput(this, "ImportApiUrl", {
       value: api.url,
